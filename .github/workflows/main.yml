@@ -1,31 +1,27 @@
-# This is a basic workflow to help you get started with Actions
-name:Connect to an AWS role from a GitHub repository
-
-# Controls when the action will run. Invokes the workflow on push events but only for the main branch
+# Sample workflow to access AWS resources when workflow is tied to branch
+# The workflow Creates static website using aws s3
+name: AWS example workflow
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  push
 env:
+  BUCKET_NAME : "edlresume.com"
   AWS_REGION : "us-east-2"
-# Permission can be added at job level or workflow level    
 permissions:
-      id-token: write
-      contents: read
+  id-token: write  
+  contents: read   
 jobs:
-  AssumeRoleAndCallIdentity:
+  S3PackageUpload:
     runs-on: ubuntu-latest
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v1.7.0
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: arn:aws:iam::246363045090:role/svc-gh-s3Uploader
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-session-name: samplerolesession
           aws-region: ${{ env.AWS_REGION }}
-      # Hello from AWS: WhoAmI
-      - name: Sts GetCallerIdentity
+      # Upload a file to AWS s3
+      - name:  Copy index.html to s3
         run: |
-          aws sts get-caller-identity
+          aws s3 cp ./index.html s3://${{ env.BUCKET_NAME }}/
