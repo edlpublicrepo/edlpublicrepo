@@ -1,20 +1,31 @@
-name: Upload Website
+# This is a basic workflow to help you get started with Actions
+name:Connect to an AWS role from a GitHub repository
+
+# Controls when the action will run. Invokes the workflow on push events but only for the main branch
 on:
   push:
-    branches:
-    - main
-
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+env:
+  AWS_REGION : <"us-east-2">
+# Permission can be added at job level or workflow level    
+permissions:
+      id-token: write
+      contents: read
 jobs:
-  deploy:
+  AssumeRoleAndCallIdentity:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks --delete
-      env:
-        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: 'us-west-2'   # optional: defaults to us-east-1
-        SOURCE_DIR: 'resumeSite'      # optional: defaults to entire repository
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::246363045090:role/svc-gh-s3Uploader
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+      # Hello from AWS: WhoAmI
+      - name: Sts GetCallerIdentity
+        run: |
+          aws sts get-caller-identity
