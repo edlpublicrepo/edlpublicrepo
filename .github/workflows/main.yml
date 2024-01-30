@@ -4,7 +4,6 @@ name: Sync files to S3
 on:
   push
 env:
-  BUCKET_NAME : "edlresume.com"
   AWS_REGION : "us-east-2"
 permissions:
   id-token: write  
@@ -24,5 +23,5 @@ jobs:
       # Upload a file to AWS s3
       - name:  Sync all files with s3
         run: |
-          aws s3 sync ./${{ env.BUCKET_NAME }}/toSyncToS3 s3://${{ env.BUCKET_NAME }}/ && \
-          aws cloudfront create-invalidation --distribution-id ${{ env.DISTRIBUTION_ID }} --paths "/*"
+          aws s3 sync ./${{ secrets.AWS_S3_BUCKET }}/toSyncToS3 s3://${{ secrets.AWS_S3_BUCKET }}/ && \
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION_ID }} --paths "/*"
