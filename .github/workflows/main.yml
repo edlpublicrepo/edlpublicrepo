@@ -25,3 +25,4 @@ jobs:
       - name:  Sync all files with s3
         run: |
           aws s3 sync ./${{ env.BUCKET_NAME }}/toSyncToS3 s3://${{ env.BUCKET_NAME }}/
+          aws cloudfront create-invalidation --distribution-id ${{ env.DISTRIBUTION_ID }} --paths "/*"
