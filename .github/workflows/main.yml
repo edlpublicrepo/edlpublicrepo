@@ -24,4 +24,4 @@ jobs:
       # Upload a file to AWS s3
       - name:  Sync all files with s3
         run: |
-          aws s3 sync ./${{ env.BUCKET_NAME }} s3://${{ env.BUCKET_NAME }}/
+          aws s3 sync ./${{ env.BUCKET_NAME }}/toSyncToS3 s3://${{ env.BUCKET_NAME }}/
