@@ -1,6 +1,6 @@
 # Sample workflow to access AWS resources when workflow is tied to branch
 # The workflow Creates static website using aws s3
-name: AWS example workflow
+name: Sync files to S3
 on:
   push
 env:
