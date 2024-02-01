@@ -215,16 +215,20 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-MyBucketOriginID"
+    target_origin_id = aws_s3_bucket.main_bucket.bucket_regional_domain_name
     compress                 = true
+    # AWS Managed Caching Policy
+    cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6" 
+    origin_request_policy_id = "acba4595-bd28-49b8-b9fe-13317c0390fa" 
 
-    forwarded_values {
-      query_string = false
 
-      cookies {
-        forward = "none"
-      }
-    }
+    # forwarded_values {
+    #   query_string = false
+
+    #   cookies {
+    #     forward = "none"
+    #   }
+    # }
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
@@ -247,7 +251,10 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = false
+    acm_certificate_arn            = aws_acm_certificate.cert.arn 
+    minimum_protocol_version       = "TLSv1.2_2021"
+    ssl_support_method             = "sni-only"
   }
 }
 
@@ -263,3 +270,72 @@ resource "aws_acm_certificate" "cert" {
 }
 
 ///////////// Route53 /////////////
+
+
+///////////// WAF V2 /////////////
+resource "aws_wafv2_web_acl" "cloudfront" {
+  name        = "managed-rule-example"
+  description = "Example of a managed rule."
+  scope       = "REGIONAL"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "rule-1"
+    priority = 1
+
+    override_action {
+      count {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+
+        rule_action_override {
+          action_to_use {
+            count {}
+          }
+
+          name = "SizeRestrictions_QUERYSTRING"
+        }
+
+        rule_action_override {
+          action_to_use {
+            count {}
+          }
+
+          name = "NoUserAgent_HEADER"
+        }
+
+        scope_down_statement {
+          geo_match_statement {
+            country_codes = ["US", "NL"]
+          }
+        }
+      }
+    }
+
+    token_domains = ["mywebsite.com", "myotherwebsite.com"]
+
+    visibility_config {
+      cloudwatch_metrics_enabled = false
+      metric_name                = "friendly-rule-metric-name"
+      sampled_requests_enabled   = false
+    }
+  }
+
+  tags = {
+    Tag1 = "Value1"
+    Tag2 = "Value2"
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = false
+    metric_name                = "friendly-metric-name"
+    sampled_requests_enabled   = false
+  }
+}
