@@ -1,0 +1,50 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: edlresume-deployment
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: edlresume
+#   template:
+#     metadata:
+#       labels:
+#         app: edlresume
+#     spec:
+#       containers:
+#       - name: edlresume
+#         image: erickdalima/edlresume:latest
+#         ports:
+#         - containerPort: 80
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-project
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+  selector:
+    app: nginx-project
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-project
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: nginx-project
+  template:
+    metadata:
+      labels:
+        app: nginx-project
+    spec:
+      containers:
+        - name: nginx
+          image: erickdalima/edlresume:latest
+          ports:
+            - containerPort: 80

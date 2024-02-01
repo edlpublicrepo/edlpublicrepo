@@ -2,19 +2,128 @@ provider "aws" {
   region = "us-east-2"
 }
 
-resource "aws_s3_bucket" "main_bucket" {
-  bucket = "edlresume.com"
-  acl    = "public-read"
+provider "aws" {
+  region = "us-east-1"
+  alias  = "us-east-1"
+}
 
-  tags = {
-    Name = "edlresume.com"
+terraform {
+  backend "s3" {
+    bucket = "edlresume.com"
+    key    = "state/terraform.tfstate"
+    region = "us-east-2"
   }
 }
-resource "aws_s3_bucket_acl" "main_bucket" {
-  bucket = aws_s3_bucket.main_bucket.id
-  acl    = "private"
+
+
+///////////// AWS Account Info /////////////
+data "aws_caller_identity" "current" {}
+
+locals {
+    account_id = data.aws_caller_identity.current.account_id
 }
 
+///////////// Main bucket /////////////
+resource "aws_s3_bucket" "main_bucket" {
+  bucket = "edlresume.com"
+  force_destroy = false
+}
+// resource "aws_s3_bucket_acl" "main_bucket" {
+//   bucket = "aws_s3_bucket.main_bucket.id"
+//   acl    = "private"
+// }
+
+resource "aws_s3_bucket_policy" "cloudfront_access" {
+  bucket = aws_s3_bucket.main_bucket.id
+  policy = data.aws_iam_policy_document.cloudfront_access.json
+}
+
+data "aws_iam_policy_document" "cloudfront_access" {
+  policy_id = "PolicyForCloudFrontPrivateContent"
+  statement {
+    sid = "AllowCloudFrontServicePrincipal"
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.main_bucket.arn}/*"
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+
+      values = [
+        aws_cloudfront_distribution.s3_distribution.arn
+      ]
+    }
+  }
+}
+
+///////////////////// Changed
+// {
+//     "Version": "2008-10-17",
+//     "Id": "PolicyForCloudFrontPrivateContent",
+//     "Statement": [
+//         {
+//             "Sid": "AllowCloudFrontServicePrincipal",
+//             "Effect": "Allow",
+//             "Principal": {
+//                 "Service": "cloudfront.amazonaws.com"
+//             },
+//             "Action": "s3:GetObject",
+//             "Resource": "arn:aws:s3:::edlresume.com/*",
+//             "Condition": {
+//                 "StringEquals": {
+//                     "AWS:SourceArn": "arn:aws:cloudfront::246363045090:distribution/E3R8JRJMF9MBYL"
+//                 }
+//             }
+//         }
+//     ]
+// }
+
+
+//////////////////// Deleted
+//   # aws_s3_bucket_acl.main_bucket will be destroyed
+//   # (because aws_s3_bucket_acl.main_bucket is not in configuration)
+//   - resource "aws_s3_bucket_acl" "main_bucket" {
+//       - bucket = "edlresume.com" -> null
+//       - id     = "edlresume.com" -> null
+
+//       - access_control_policy {
+//           - grant {
+//               - permission = "FULL_CONTROL" -> null
+
+//               - grantee {
+//                   - id   = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a" -> null
+//                   - type = "CanonicalUser" -> null
+//                 }
+//             }
+//           - owner {
+//               - id = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a" -> null
+//             }
+//         }
+//     }
+
+
+
+resource "aws_s3_bucket_logging" "main_bucket_logging" {
+  bucket = aws_s3_bucket.main_bucket.id
+
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = ""
+  target_object_key_format {
+    simple_prefix {}
+  }
+}
+
+///////////// Log bucket /////////////
 resource "aws_s3_bucket" "log_bucket" {
   bucket = "edlresume.com-logs"
 }
@@ -24,13 +133,58 @@ resource "aws_s3_bucket_acl" "log_bucket_acl" {
   acl    = "log-delivery-write"
 }
 
-resource "aws_s3_bucket_logging" "main_bucket_logging" {
-  bucket = aws_s3_bucket.main_bucket.id
-
-  target_bucket = aws_s3_bucket.log_bucket.id
-  target_prefix = ""
+resource "aws_s3_bucket_policy" "allow_logging" {
+  bucket = aws_s3_bucket.log_bucket.id
+  policy = data.aws_iam_policy_document.allow_logging.json
 }
 
+data "aws_iam_policy_document" "allow_logging" {
+  statement {
+    principals {
+      type        = "Service"
+      identifiers = ["logging.s3.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:PutObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.log_bucket.arn}/*"
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+
+      values = [
+        local.account_id
+      ]
+    }
+  }
+}
+// {
+//     "Version": "2012-10-17",
+//     "Statement": [
+//         {
+//             "Effect": "Allow",
+//             "Principal": {
+//                 "Service": "logging.s3.amazonaws.com"
+//             },
+//             "Action": "s3:PutObject",
+//             "Resource": "arn:aws:s3:::edlresume.com-logs/*",
+//             "Condition": {
+//                 "StringEquals": {
+//                     "aws:SourceAccount": "246363045090"
+//                 }
+//             }
+//         }
+//     ]
+// }
+
+
+
+///////////// CloudFront /////////////
 resource "aws_cloudfront_origin_access_control" "main" {
   name                              = "edlresume.com"
   description                       = "OAC for edlresume.com"
@@ -40,25 +194,29 @@ resource "aws_cloudfront_origin_access_control" "main" {
 }
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
-  origin {
-    domain_name = aws_s3_bucket.main_bucket.bucket_regional_domain_name
-    origin_id   = "edlresume.com"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
+    origin {
+        connection_attempts      = 3
+        connection_timeout       = 10
+        domain_name              = "edlresume.com.s3.us-east-2.amazonaws.com"
+        origin_access_control_id = "E1NZV69S1GSKS3"
+        origin_id                = "edlresume.com.s3.us-east-2.amazonaws.com"
+        origin_shield {
+            enabled              = true
+            origin_shield_region = "us-west-2"
+        }
     }
-  }
 
   enabled             = true
-  is_ipv6_enabled     = true
+  is_ipv6_enabled     = false
   default_root_object = "index.html"
-
-  aliases = ["example.com"]
+  
+  aliases = ["edlresume.com"]
 
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-MyBucketOriginID"
+    compress                 = true
 
     forwarded_values {
       query_string = false
@@ -74,6 +232,12 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     max_ttl                = 86400
   }
 
+    logging_config {
+        bucket          = aws_s3_bucket.log_bucket.bucket_domain_name
+        include_cookies = false
+        prefix          = "cloudfront/"
+    }
+
   price_class = "PriceClass_100"
 
   restrictions {
@@ -87,6 +251,15 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   }
 }
 
-resource "aws_cloudfront_origin_access_identity" "oai" {
-  comment = "OAI for MyBucket"
+///////////// ACM /////////////
+resource "aws_acm_certificate" "cert" {
+  provider = aws.us-east-1
+  domain_name       = "edlresume.com"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
+
+///////////// Route53 /////////////
