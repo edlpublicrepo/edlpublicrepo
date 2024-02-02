@@ -20,12 +20,12 @@ terraform {
 data "aws_caller_identity" "current" {}
 
 locals {
-    account_id = data.aws_caller_identity.current.account_id
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 ///////////// Main bucket /////////////
 resource "aws_s3_bucket" "main_bucket" {
-  bucket = "edlresume.com"
+  bucket        = "edlresume.com"
   force_destroy = false
 }
 // resource "aws_s3_bucket_acl" "main_bucket" {
@@ -93,20 +93,20 @@ data "aws_iam_policy_document" "cloudfront_access" {
 //   # aws_s3_bucket_acl.main_bucket will be destroyed
 //   # (because aws_s3_bucket_acl.main_bucket is not in configuration)
 //   - resource "aws_s3_bucket_acl" "main_bucket" {
-//       - bucket = "edlresume.com" -> null
-//       - id     = "edlresume.com" -> null
+//   bucket = "edlresume.com"
+//   id     = "edlresume.com"
 
-//       - access_control_policy {
-//           - grant {
-//               - permission = "FULL_CONTROL" -> null
+//   access_control_policy {
+//       grant {
+//           permission = "FULL_CONTROL"
 
-//               - grantee {
-//                   - id   = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a" -> null
-//                   - type = "CanonicalUser" -> null
+//           grantee {
+//               id   = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a"
+//               type = "CanonicalUser"
 //                 }
 //             }
-//           - owner {
-//               - id = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a" -> null
+//       owner {
+//           id = "1ee44cf54ea952c291d1343afe166f747c5757dd3f633a0d594031224f962f9a"
 //             }
 //         }
 //     }
@@ -194,32 +194,32 @@ resource "aws_cloudfront_origin_access_control" "main" {
 }
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
-    origin {
-        connection_attempts      = 3
-        connection_timeout       = 10
-        domain_name              = "edlresume.com.s3.us-east-2.amazonaws.com"
-        origin_access_control_id = "E1NZV69S1GSKS3"
-        origin_id                = "edlresume.com.s3.us-east-2.amazonaws.com"
-        origin_shield {
-            enabled              = true
-            origin_shield_region = "us-west-2"
-        }
+  origin {
+    connection_attempts      = 3
+    connection_timeout       = 10
+    domain_name              = "edlresume.com.s3.us-east-2.amazonaws.com"
+    origin_access_control_id = "E1NZV69S1GSKS3"
+    origin_id                = "edlresume.com.s3.us-east-2.amazonaws.com"
+    origin_shield {
+      enabled              = true
+      origin_shield_region = "us-west-2"
     }
-
+  }
+  web_acl_id          = aws_wafv2_web_acl.cloudfront.arn
   enabled             = true
   is_ipv6_enabled     = false
   default_root_object = "index.html"
-  
+
   aliases = ["edlresume.com"]
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = aws_s3_bucket.main_bucket.bucket_regional_domain_name
-    compress                 = true
+    compress         = true
     # AWS Managed Caching Policy
-    cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6" 
-    origin_request_policy_id = "acba4595-bd28-49b8-b9fe-13317c0390fa" 
+    cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    origin_request_policy_id = "acba4595-bd28-49b8-b9fe-13317c0390fa"
 
 
     # forwarded_values {
@@ -235,12 +235,34 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     default_ttl            = 3600
     max_ttl                = 86400
   }
+  # Cache behavior with precedence 0
+  ordered_cache_behavior {
+    path_pattern     = "/assets/extra/thisIsMyDevEnv/*.html"
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = aws_s3_bucket.main_bucket.bucket_regional_domain_name
 
-    logging_config {
-        bucket          = aws_s3_bucket.log_bucket.bucket_domain_name
-        include_cookies = false
-        prefix          = "cloudfront/"
+    forwarded_values {
+      query_string = false
+      headers      = ["Origin"]
+
+      cookies {
+        forward = "none"
+      }
     }
+
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  logging_config {
+    bucket          = aws_s3_bucket.log_bucket.bucket_domain_name
+    include_cookies = false
+    prefix          = "cloudfront/"
+  }
 
   price_class = "PriceClass_100"
 
@@ -252,7 +274,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 
   viewer_certificate {
     cloudfront_default_certificate = false
-    acm_certificate_arn            = aws_acm_certificate.cert.arn 
+    acm_certificate_arn            = aws_acm_certificate.cert.arn
     minimum_protocol_version       = "TLSv1.2_2021"
     ssl_support_method             = "sni-only"
   }
@@ -260,7 +282,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 
 ///////////// ACM /////////////
 resource "aws_acm_certificate" "cert" {
-  provider = aws.us-east-1
+  provider          = aws.us-east-1
   domain_name       = "edlresume.com"
   validation_method = "DNS"
 
@@ -270,20 +292,219 @@ resource "aws_acm_certificate" "cert" {
 }
 
 ///////////// Route53 /////////////
+resource "aws_route53_zone" "primary" {
+  comment = "Managed by Terraform"
+  name    = "edlresume.com"
+}
 
+resource "aws_route53_record" "primary" {
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "edlresume.com"
+  type    = "A"
+  alias {
+      evaluate_target_health = false
+      name                   = aws_cloudfront_distribution.s3_distribution.domain_name
+      zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+        }
+}
 
 ///////////// WAF V2 /////////////
 resource "aws_wafv2_web_acl" "cloudfront" {
-  name        = "managed-rule-example"
-  description = "Example of a managed rule."
-  scope       = "REGIONAL"
+  provider = aws.us-east-1
+  name     = "CreatedByCloudFront-4df053e8-948e-4d16-9e3e-927491b62239"
+  scope    = "CLOUDFRONT"
 
   default_action {
     allow {}
   }
 
   rule {
-    name     = "rule-1"
+    name     = "AWS-AWSManagedRulesAmazonIpReputationList"
+    priority = 0
+
+    override_action {
+      count {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWS-AWSManagedRulesAmazonIpReputationList"
+      sampled_requests_enabled   = true
+    }
+  }
+  rule {
+    name     = "AWS-AWSManagedRulesBotControlRuleSet"
+    priority = 3
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesBotControlRuleSet"
+        vendor_name = "AWS"
+
+        managed_rule_group_configs {
+          aws_managed_rules_bot_control_rule_set {
+            inspection_level = "COMMON"
+          }
+        }
+
+        rule_action_override {
+          name = "CategoryAdvertising"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryArchiver"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryContentFetcher"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryEmailClient"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryHttpLibrary"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryLinkChecker"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryMiscellaneous"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryMonitoring"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryScrapingFramework"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategorySearchEngine"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategorySecurity"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategorySeo"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategorySocialMedia"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "CategoryAI"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "SignalAutomatedBrowser"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "SignalKnownBotDataCenter"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+        rule_action_override {
+          name = "SignalNonBrowserUserAgent"
+
+          action_to_use {
+            count {
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWS-AWSManagedRulesBotControlRuleSet"
+      sampled_requests_enabled   = true
+    }
+  }
+  rule {
+    name     = "AWS-AWSManagedRulesCommonRuleSet"
     priority = 1
 
     override_action {
@@ -294,48 +515,41 @@ resource "aws_wafv2_web_acl" "cloudfront" {
       managed_rule_group_statement {
         name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
-
-        rule_action_override {
-          action_to_use {
-            count {}
-          }
-
-          name = "SizeRestrictions_QUERYSTRING"
-        }
-
-        rule_action_override {
-          action_to_use {
-            count {}
-          }
-
-          name = "NoUserAgent_HEADER"
-        }
-
-        scope_down_statement {
-          geo_match_statement {
-            country_codes = ["US", "NL"]
-          }
-        }
       }
     }
 
-    token_domains = ["mywebsite.com", "myotherwebsite.com"]
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWS-AWSManagedRulesCommonRuleSet"
+      sampled_requests_enabled   = true
+    }
+  }
+  rule {
+    name     = "AWS-AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 2
+
+    override_action {
+      count {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
 
     visibility_config {
-      cloudwatch_metrics_enabled = false
-      metric_name                = "friendly-rule-metric-name"
-      sampled_requests_enabled   = false
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWS-AWSManagedRulesKnownBadInputsRuleSet"
+      sampled_requests_enabled   = true
     }
   }
 
-  tags = {
-    Tag1 = "Value1"
-    Tag2 = "Value2"
-  }
 
   visibility_config {
-    cloudwatch_metrics_enabled = false
-    metric_name                = "friendly-metric-name"
-    sampled_requests_enabled   = false
+    cloudwatch_metrics_enabled = true
+    metric_name                = "CreatedByCloudFront-4df053e8-948e-4d16-9e3e-927491b62239"
+    sampled_requests_enabled   = true
   }
 }
