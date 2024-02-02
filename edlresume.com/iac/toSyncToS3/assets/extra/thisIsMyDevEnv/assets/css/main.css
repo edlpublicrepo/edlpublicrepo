@@ -247,7 +247,7 @@ a:hover
 
     background: url(../img/background.jpg);
     background-repeat: no-repeat;
-    background-size: cover;
+    background-size: contain;
 }
 
 @media (max-width:1200px)
