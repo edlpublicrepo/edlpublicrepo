@@ -230,9 +230,15 @@ a:hover
     width: 50%;
     height: 100%;
 }
-
+@media (max-width: 768px) {
+    .image-container .background-img {
+        background-position: top center; /* Adjust this based on where your face is in the image */
+    }
+}
 .image-container .background-img
 {
+
+    object-fit: contain;
     position: absolute;
     z-index: 1;
     top: 0;
