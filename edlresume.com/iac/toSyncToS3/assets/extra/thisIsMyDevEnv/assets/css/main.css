@@ -233,7 +233,8 @@ a:hover
 
 .image-container .background-img
 {
-    position: center center;
+    object-fit: contain;
+    position: absolute;
     z-index: 1;
     top: 0;
     left: 0;
