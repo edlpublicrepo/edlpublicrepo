@@ -233,7 +233,7 @@ a:hover
 
 .image-container .background-img
 {
-    position: absolute;
+    position: center center;
     z-index: 1;
     top: 0;
     left: 0;
@@ -247,7 +247,7 @@ a:hover
 
     background: url(../img/background.jpg);
     background-repeat: no-repeat;
-    background-size: contain;
+    background-size: cover;
 }
 
 @media (max-width:1200px)
