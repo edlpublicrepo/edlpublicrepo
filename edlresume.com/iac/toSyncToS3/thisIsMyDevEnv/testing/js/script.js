@@ -9,4 +9,3 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('apiResponse').innerText = 'Failed to load costs.';
     });
 });
-

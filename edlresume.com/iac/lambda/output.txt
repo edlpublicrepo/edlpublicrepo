@@ -1,0 +1,1 @@
+{"statusCode": 200, "headers": {"Content-Type": "text/html; charset=utf-8", "Access-Control-Allow-Origin": "*"}, "body": "<p>Last 30 days cost of running website: $18.48<br>Current month's cost of running website: $4.05</p>"}
