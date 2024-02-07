@@ -253,7 +253,7 @@ a:hover
             transition: opacity 1s ease;
 
     background: url(../img/background.jpg);
-    /* background-repeat: no-repeat; */
+    background-repeat: no-repeat;
     background-size: contain;
 }
 
