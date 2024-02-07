@@ -233,7 +233,7 @@ a:hover
 @media (max-width: 768px) {
     .image-container .background-img {
         /* background-position: top center; Adjust this based on where your face is in the image */
-        background-position: center center; /* Adjust this based on where your face is in the image */
+        background-position: bottom right; /* Adjust this based on where your face is in the image */
     }
 }
 .image-container .background-img
