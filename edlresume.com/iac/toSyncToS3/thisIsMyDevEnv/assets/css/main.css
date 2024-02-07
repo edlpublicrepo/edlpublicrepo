@@ -243,7 +243,7 @@ a:hover
         height: 100vh;
     }
 } */
-@media  (min-width:700px) and (max-width:1200px)
+@media (max-width:1200px)
 {
     .image-container
     {
@@ -256,19 +256,19 @@ a:hover
         height: 100vh;
     }
 }
-@media (max-width: 7680px) {
+/* @media (max-width: 768px) {
     .image-container .background-img {
         background-position: top center;
         background-repeat: no-repeat;
         background-size: contain;
         background: url(../img/favicon.png);
     }
-}
+} */
 .image-container .background-img
 {
 
     object-fit: contain;
-    position: absolute;
+    position: relative;
     z-index: 1;
     top: 0;
     left: 0;
