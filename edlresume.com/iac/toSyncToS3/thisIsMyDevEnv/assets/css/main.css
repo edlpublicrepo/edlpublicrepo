@@ -230,15 +230,15 @@ a:hover
     width: 50%;
     height: 100%;
 }
-@media (max-width: 768px) {
+@media (max-width: 1225px) {
     .image-container {
         position: fixed;
         z-index: 10;
         top: 0;
         left: 0;
     
-        width: 50%;
-        height: 50%;
+        width: 20%;
+        height: 20%;
     }
 }
 @media (max-width: 768px) {
