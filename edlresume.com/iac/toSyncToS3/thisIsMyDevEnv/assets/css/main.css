@@ -233,7 +233,7 @@ a:hover
 @media (max-width: 768px) {
     .image-container .background-img {
         /* background-position: top center; Adjust this based on where your face is in the image */
-        background-position: bottom right; /* Adjust this based on where your face is in the image */
+        background-position: bottom right;
     }
 }
 .image-container .background-img
@@ -253,8 +253,8 @@ a:hover
             transition: opacity 1s ease;
 
     background: url(../img/background.jpg);
-    background-repeat: no-repeat;
-    background-size: cover;
+    /* background-repeat: no-repeat; */
+    background-size: contain;
 }
 
 @media (max-width:1200px)
