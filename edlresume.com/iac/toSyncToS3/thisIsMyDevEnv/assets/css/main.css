@@ -245,7 +245,9 @@ a:hover
     .image-container .background-img {
         /* background-position: top center; Adjust this based on where your face is in the image */
         background-position: bottom right;
-    }
+        background-repeat: no-repeat;
+        background-size: contain;
+        }
 }
 .image-container .background-img
 {
