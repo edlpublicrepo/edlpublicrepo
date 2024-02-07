@@ -237,18 +237,19 @@ a:hover
         top: 0;
         left: 0;
     
-        width: 20%;
-        height: 20%;
+        width: 50%;
+        height: 50%;
     }
 }
-@media (max-width: 768px) {
+/* @media (max-width: 1225px) {
     .image-container .background-img {
-        /* background-position: top center; Adjust this based on where your face is in the image */
+        background-position: top center; Adjust this based on where your face is in the image
         background-position: bottom right;
         background-repeat: no-repeat;
         background-size: contain;
-        }
-}
+        background: url(../img/favicon.png);
+    }
+} */
 .image-container .background-img
 {
 
