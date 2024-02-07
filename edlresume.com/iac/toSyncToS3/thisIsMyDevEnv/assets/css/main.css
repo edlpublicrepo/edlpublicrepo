@@ -231,6 +231,17 @@ a:hover
     height: 100%;
 }
 @media (max-width: 768px) {
+    .image-container {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        left: 0;
+    
+        width: 50%;
+        height: 50%;
+    }
+}
+@media (max-width: 768px) {
     .image-container .background-img {
         /* background-position: top center; Adjust this based on where your face is in the image */
         background-position: bottom right;
@@ -254,7 +265,7 @@ a:hover
 
     background: url(../img/background.jpg);
     background-repeat: no-repeat;
-    background-size: contain;
+    background-size: cover;
 }
 
 @media (max-width:1200px)
