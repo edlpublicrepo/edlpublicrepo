@@ -253,7 +253,7 @@ a:hover
 
     background: url(../img/background.jpg);
     background-repeat: no-repeat;
-    background-size: cover;
+    background-size: contain;
     background-position: 100% 100%;
     
 }
