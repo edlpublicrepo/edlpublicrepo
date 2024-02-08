@@ -85,12 +85,12 @@ resource "aws_lambda_function" "cost_explorer_lambda" {
   }
 }
 
-output "lambda_arn" {
+output "cost_explorer_lambda_arn" {
   value = aws_lambda_function.cost_explorer_lambda.arn
 }
-output "lambda_invoke_arn" {
+output "cost_explorer_lambda_invoke_arn" {
   value = aws_lambda_function.cost_explorer_lambda.invoke_arn
 }
-output "lambda_function_name" {
+output "cost_explorer_lambda_function_name" {
   value = aws_lambda_function.cost_explorer_lambda.function_name
 }
