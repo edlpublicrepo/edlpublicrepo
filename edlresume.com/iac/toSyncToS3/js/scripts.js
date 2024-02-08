@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('https://x4kkn1qa7d.execute-api.us-east-2.amazonaws.com/test')
+    fetch('https://6dfeb7uf1f.execute-api.us-east-2.amazonaws.com/prod')
     .then(response => response.text()) // assuming the API returns HTML formatted text
     .then(data => {
         document.getElementById('apiResponse').innerHTML = data;
