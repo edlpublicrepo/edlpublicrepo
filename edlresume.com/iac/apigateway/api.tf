@@ -18,7 +18,7 @@ resource "aws_iam_role" "cost_explorer_api_role" {
 
 resource "aws_iam_policy" "cost_explorer_api_policy" {
   name        = "lambda_cloudwatch_cost_explorer_api_policy"
-  description = data.terraform_remote_state.lambda.outputs.lambda_arn
+  description = data.terraform_remote_state.lambda.outputs.cost_explorer_lambda_arn
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -28,7 +28,7 @@ resource "aws_iam_policy" "cost_explorer_api_policy" {
         Action = [
           "lambda:InvokeFunction"
         ],
-        Resource = data.terraform_remote_state.lambda.outputs.lambda_arn
+        Resource = data.terraform_remote_state.lambda.outputs.cost_explorer_lambda_arn
       }
     ]
   })
@@ -42,70 +42,70 @@ resource "aws_iam_role_policy_attachment" "cost_explorer_api_policy_attachment" 
   policy_arn = aws_iam_policy.cost_explorer_api_policy.arn
 }
 
-resource "aws_api_gateway_rest_api" "example" {
+resource "aws_api_gateway_rest_api" "cost_explorer" {
   name = "cost_explorer"
 }
 
-resource "aws_api_gateway_resource" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.example.id
-  parent_id   = aws_api_gateway_rest_api.example.root_resource_id
+resource "aws_api_gateway_resource" "cost_explorer_proxy" {
+  rest_api_id = aws_api_gateway_rest_api.cost_explorer.id
+  parent_id   = aws_api_gateway_rest_api.cost_explorer.root_resource_id
   path_part   = "{proxy+}"
 }
 
-resource "aws_api_gateway_method" "proxy" {
-  rest_api_id   = aws_api_gateway_rest_api.example.id
-  resource_id   = aws_api_gateway_resource.proxy.id
+resource "aws_api_gateway_method" "cost_explorer_proxy" {
+  rest_api_id   = aws_api_gateway_rest_api.cost_explorer.id
+  resource_id   = aws_api_gateway_resource.cost_explorer_proxy.id
   http_method   = "ANY"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "lambda" {
-  rest_api_id = aws_api_gateway_rest_api.example.id
-  resource_id = aws_api_gateway_method.proxy.resource_id
-  http_method = aws_api_gateway_method.proxy.http_method
+  rest_api_id = aws_api_gateway_rest_api.cost_explorer.id
+  resource_id = aws_api_gateway_method.cost_explorer_proxy.resource_id
+  http_method = aws_api_gateway_method.cost_explorer_proxy.http_method
 
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = data.terraform_remote_state.lambda.outputs.lambda_invoke_arn
+  uri                     = data.terraform_remote_state.lambda.outputs.cost_explorer_lambda_invoke_arn
 }
 
-resource "aws_api_gateway_method" "proxy_root" {
-  rest_api_id   = aws_api_gateway_rest_api.example.id
-  resource_id   = aws_api_gateway_rest_api.example.root_resource_id
+resource "aws_api_gateway_method" "cost_explorer_proxy_root" {
+  rest_api_id   = aws_api_gateway_rest_api.cost_explorer.id
+  resource_id   = aws_api_gateway_rest_api.cost_explorer.root_resource_id
   http_method   = "ANY"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "lambda_root" {
-  rest_api_id = aws_api_gateway_rest_api.example.id
-  resource_id = aws_api_gateway_method.proxy_root.resource_id
-  http_method = aws_api_gateway_method.proxy_root.http_method
+  rest_api_id = aws_api_gateway_rest_api.cost_explorer.id
+  resource_id = aws_api_gateway_method.cost_explorer_proxy_root.resource_id
+  http_method = aws_api_gateway_method.cost_explorer_proxy_root.http_method
 
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = data.terraform_remote_state.lambda.outputs.lambda_invoke_arn
+  uri                     = data.terraform_remote_state.lambda.outputs.cost_explorer_lambda_invoke_arn
 }
 
 
-resource "aws_api_gateway_deployment" "example" {
+resource "aws_api_gateway_deployment" "cost_explorer" {
   depends_on = [
     aws_api_gateway_integration.lambda,
     aws_api_gateway_integration.lambda_root,
   ]
 
-  rest_api_id = aws_api_gateway_rest_api.example.id
+  rest_api_id = aws_api_gateway_rest_api.cost_explorer.id
   stage_name  = "test"
 }
 
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = data.terraform_remote_state.lambda.outputs.lambda_function_name
+  function_name = data.terraform_remote_state.lambda.outputs.cost_explorer_lambda_function_name
   principal     = "apigateway.amazonaws.com"
 
   # The /*/* portion grants access from any method on any resource
   # within the API Gateway "REST API".
-  source_arn = "${aws_api_gateway_rest_api.example.execution_arn}/*/*"
+  source_arn = "${aws_api_gateway_rest_api.cost_explorer.execution_arn}/*/*"
 }
 # resource "aws_api_gateway_stage" "cost_explorer" {
 #   deployment_id = aws_api_gateway_deployment.cost_explorer.id
@@ -115,5 +115,5 @@ resource "aws_lambda_permission" "apigw" {
 
 
 output "base_url" {
-  value = aws_api_gateway_deployment.example.invoke_url
+  value = aws_api_gateway_deployment.cost_explorer.invoke_url
 }

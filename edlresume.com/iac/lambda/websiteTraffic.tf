@@ -1,6 +1,6 @@
 ///////////// Lambda /////////////
 resource "aws_iam_role" "website_traffic_role" {
-  name               = "lambda_execution_role"
+  name               = "website_traffic_lambda_execution_role"
   assume_role_policy = data.aws_iam_policy_document.website_traffic_policy_document.json
 
   tags = {
@@ -77,12 +77,12 @@ resource "aws_lambda_function" "website_traffic_lambda" {
   }
 }
 
-output "lambda_arn" {
+output "website_traffic_lambda_arn" {
   value = aws_lambda_function.website_traffic_lambda.arn
 }
-output "lambda_invoke_arn" {
+output "website_traffic_lambda_invoke_arn" {
   value = aws_lambda_function.website_traffic_lambda.invoke_arn
 }
-output "lambda_function_name" {
+output "website_traffic_lambda_function_name" {
   value = aws_lambda_function.website_traffic_lambda.function_name
 }
