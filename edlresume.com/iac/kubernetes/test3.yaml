@@ -1,0 +1,38 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: edlresume
+  labels:
+    app: edlresume
+spec:
+  selector:
+    app: edlresume
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 80
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edlresume
+  labels:
+    app: edlresume
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edlresume
+  template:
+    metadata:
+      labels:
+        app: edlresume
+    spec:
+      containers:
+      - name: edlresume
+        image: erickdalima/edlresume:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          protocol: TCP

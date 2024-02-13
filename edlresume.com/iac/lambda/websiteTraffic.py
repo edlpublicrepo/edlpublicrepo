@@ -34,7 +34,7 @@ def lambda_handler(event, context):
     )
 
     # Print the results
-    sum_of_hits_on_website = int(sum([num_of_hits['Sum'] for num_of_hits in response['Datapoints']]))
+    sum_of_hits_on_website = int(sum([num_of_hits['Sum'] for num_of_hits in response['Datapoints']])) // 30
 
     html_body = f"Website hit count for last 30 days (updated daily): {sum_of_hits_on_website}"
 
