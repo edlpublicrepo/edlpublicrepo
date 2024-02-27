@@ -14,14 +14,14 @@ terraform {
   }
 }
 
-/// Data needed for this folder's resources
-data "terraform_remote_state" "wafv2_arn" {
-  backend = "s3"
-  config = {
-    bucket = "edlresume.com-state"
-    key    = "wafv2/terraform.tfstate"
-    region = "us-east-2"
-  }
-}
+# /// Data needed for this folder's resources
+# data "terraform_remote_state" "wafv2_arn" {
+#   backend = "s3"
+#   config = {
+#     bucket = "edlresume.com-state"
+#     key    = "wafv2/terraform.tfstate"
+#     region = "us-east-2"
+#   }
+# }
 
 

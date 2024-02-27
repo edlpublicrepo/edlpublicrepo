@@ -12,7 +12,7 @@ variable "name_prefix" {
 
 variable "image_id" {
   type        = string
-  default     = "ami-07b469810a61205a8"
+  default     = "ami-05fb0b8c1424f266b"
   description = "The AMI for your EC2 instances"
 }
 
@@ -84,4 +84,10 @@ variable "min_size" {
   type = number
   default = 2
   description = "The minimum number of total nodes"
+}
+
+variable "my_local_ip" {
+  type = string
+  description = "The NAT IP of your local machine"
+  sensitive = true
 }
