@@ -81,6 +81,14 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
   to_port                      = 22
 }
 
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4_local" {
+  security_group_id = aws_security_group.main_sg.id
+  cidr_ipv4 = var.my_local_ip
+  from_port                    = 22
+  ip_protocol                  = "tcp"
+  to_port                      = 22
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
   security_group_id = aws_security_group.main_sg.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -152,6 +160,7 @@ resource "aws_autoscaling_group" "control_plane" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
+      max_healthy_percentage = 200
       min_healthy_percentage = 0
       standby_instances = "Terminate"
     }
@@ -198,4 +207,20 @@ resource "aws_lb_listener" "main" {
 resource "aws_autoscaling_attachment" "asg_attachment_bar" {
   autoscaling_group_name = aws_autoscaling_group.control_plane.id
   lb_target_group_arn    = aws_lb_target_group.main.arn
+}
+
+
+
+output "control_plane_launch_template_id" {
+  value = aws_launch_template.control_plane.id
+}
+output "control_plane_launch_template_latest_version" {
+  value = aws_launch_template.control_plane.latest_version
+}
+
+output "worker_node_launch_template_id" {
+  value = aws_launch_template.worker_node.id
+}
+output "worker_node_launch_template_latest_version" {
+  value = aws_launch_template.worker_node.latest_version
 }

@@ -18,7 +18,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
       origin_shield_region = "us-west-2"
     }
   }
-  web_acl_id          = data.terraform_remote_state.wafv2_arn.outputs.aws_wafv2_web_acl_arn
+  # web_acl_id          = data.terraform_remote_state.wafv2_arn.outputs.aws_wafv2_web_acl_arn
   enabled             = true
   is_ipv6_enabled     = false
   default_root_object = "index.html"
