@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-config-map
+data:
+  honey.cfg: |
+    There is always money in the honey stand!
