@@ -35,12 +35,12 @@ echo "========================================= Apply sysctl params without rebo
 
 
 echo "---------------------------------------- Set up the Docker Engine repository"
-sudo apt-get update && sleep 3 && \
-sudo apt-get install -y ca-certificates && sleep 3 && \
-sudo apt-get install -y curl && sleep 3 && \
-sudo apt-get install -y gnupg && sleep 3 && \
-sudo apt-get install -y lsb-release && sleep 3 && \
-sudo apt-get install -y apt-transport-https && sleep 3 && \
+sudo apt-get update && sleep 3 && echo 1111111111 && ps aux | grep -i apt && \
+sudo apt-get install -y ca-certificates && sleep 3 && echo 222222222 && ps aux | grep -i apt && \
+sudo apt-get install -y curl && sleep 3 && echo 3333333333 && ps aux | grep -i apt && \
+sudo apt-get install -y gnupg && sleep 3 && echo 4444444444 && ps aux | grep -i apt && \
+sudo apt-get install -y lsb-release && sleep 3 && echo 555555555 && ps aux | grep -i apt && \
+sudo apt-get install -y apt-transport-https && sleep 3 && echo 6666666666 && ps aux | grep -i apt && \
 echo "========================================= Set up the Docker Engine repository"
 
 
