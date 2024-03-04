@@ -73,6 +73,16 @@ resource "aws_vpc_security_group_ingress_rule" "main_sg_ipv4" {
   to_port                      = 80
 }
 
+resource "aws_vpc_security_group_ingress_rule" "main_sg_k8s" {
+  security_group_id = aws_security_group.main_sg.id
+  #   cidr_ipv4         = var.ingress_cidr_block
+  referenced_security_group_id = aws_security_group.main_sg.id
+  from_port                    = 6443
+  ip_protocol                  = "tcp"
+  to_port                      = 6443
+  description = "K8s"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
   security_group_id = aws_security_group.main_sg.id
   referenced_security_group_id = aws_security_group.main_sg.id
@@ -160,7 +170,7 @@ resource "aws_autoscaling_group" "control_plane" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      max_healthy_percentage = 200
+      max_healthy_percentage = 100
       min_healthy_percentage = 0
       standby_instances = "Terminate"
     }
