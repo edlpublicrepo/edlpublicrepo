@@ -18,9 +18,9 @@ func main() {
 	b := [5]int{0, num1, 2, 3, 4}
 	fmt.Println("b:", b)
 
-	var twoDimensional [2][3]int
+	var twoDimensional [2][4]int
 	for i := 0; i < 2; i++ {
-		for j := 0; j < 3; j++ {
+		for j := 0; j < 4; j++ {
 			twoDimensional[i][j] = i + j
 			fmt.Println("testing", twoDimensional)
 		}
