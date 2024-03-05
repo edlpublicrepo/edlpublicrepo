@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: edlresume
-          image: erickdalima/edlresume:latest
+          image: erickdalima/eldresume.com-k8s:v1
           ports:
             - containerPort: 80
           resources:
