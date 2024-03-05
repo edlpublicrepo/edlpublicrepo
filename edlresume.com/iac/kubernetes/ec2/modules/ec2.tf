@@ -99,6 +99,22 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4_local" {
   to_port                      = 22
 }
 
+resource "aws_vpc_security_group_ingress_rule" "main_sg_k8s_53_tcp" {
+  security_group_id = aws_security_group.main_sg.id
+  cidr_ipv4 = var.my_local_ip
+  from_port                    = 53
+  ip_protocol                  = "tcp"
+  to_port                      = 53
+}
+
+resource "aws_vpc_security_group_ingress_rule" "main_sg_k8s_53_udp" {
+  security_group_id = aws_security_group.main_sg.id
+  cidr_ipv4 = var.my_local_ip
+  from_port                    = 53
+  ip_protocol                  = "upd"
+  to_port                      = 53
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
   security_group_id = aws_security_group.main_sg.id
   cidr_ipv4         = "0.0.0.0/0"
