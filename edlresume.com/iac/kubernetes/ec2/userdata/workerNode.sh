@@ -94,7 +94,7 @@ sudo apt-get update && \
 sudo apt-get install -y kubelet kubeadm kubectl && \
 sudo apt-mark hold kubelet kubeadm kubectl  && \
 echo "alias k='kubectl'" >> ~/.bashrc && \
-echo "========================================= On all nodes, install kubeadm, kubelet, and kubectl"  && \
+echo "========================================= On all nodes, install kubeadm, kubelet, and kubectl" \
 \
 \
 # echo "---------------------------------------- On the control plane node only, initialize the cluster and set up kubectl access"  && \
