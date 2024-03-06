@@ -126,3 +126,8 @@ echo "---------------------------------------- Install helm"  && \
 sudo snap install helm --classic && \
 echo "========================================= Install helm"  && \
 echo "========================================= DONE! ========================================="
+
+##################################################################################################################################
+########################## In Developtment, to run on Worker node to joine the cluster via SSH command##########################
+##################################################################################################################################
+# aws ec2 describe-instances   --filters "Name=tag:Name,Values=Worker" "Name=instance-state-name,Values=running"   --query "Reservations[*].Instances[*].PublicIpAddress"   --region=us-east-2 --output=text | xargs -I {} ssh ubuntu@{} 'cat /home/ubuntu/.ssh/authorized_keys'

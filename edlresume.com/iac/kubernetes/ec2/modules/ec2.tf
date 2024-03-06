@@ -83,6 +83,23 @@ resource "aws_vpc_security_group_ingress_rule" "main_sg_k8s" {
   description = "K8s"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "allow_http" {
+  security_group_id = aws_security_group.main_sg.id
+  cidr_ipv4 = "0.0.0.0/0"
+  from_port                    = 80
+  ip_protocol                  = "tcp"
+  to_port                      = 80
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_https" {
+  security_group_id = aws_security_group.main_sg.id
+  cidr_ipv4 = "0.0.0.0/0"
+  from_port                    = 443
+  ip_protocol                  = "tcp"
+  to_port                      = 443
+}
+
+
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
   security_group_id = aws_security_group.main_sg.id
   referenced_security_group_id = aws_security_group.main_sg.id
@@ -111,7 +128,7 @@ resource "aws_vpc_security_group_ingress_rule" "main_sg_k8s_53_udp" {
   security_group_id = aws_security_group.main_sg.id
   cidr_ipv4 = var.my_local_ip
   from_port                    = 53
-  ip_protocol                  = "upd"
+  ip_protocol                  = "udp"
   to_port                      = 53
 }
 
@@ -140,6 +157,54 @@ resource "aws_lb" "main" {
     "AppName" = var.domain_name
   }
 }
+
+
+
+
+
+
+
+
+
+data "aws_route53_zone" "main" {
+  name         = var.domain_name
+  private_zone = false
+}
+
+resource "aws_route53_record" "k8s_subdomain" {
+  for_each = {
+    for dvo in aws_acm_certificate.k8s_subdomain.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+resource "aws_acm_certificate_validation" "k8s_subdomain" {
+  certificate_arn         = aws_acm_certificate.k8s_subdomain.arn
+  validation_record_fqdns = [for record in aws_route53_record.k8s_subdomain : record.fqdn]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 resource "aws_key_pair" "main" {
   key_name   = var.name_prefix
@@ -194,7 +259,7 @@ resource "aws_autoscaling_group" "control_plane" {
 }
 
 resource "aws_autoscaling_group" "worker_nodes" {
-  depends_on = [ aws_autoscaling_attachment.asg_attachment_bar ]
+  depends_on = [ aws_autoscaling_group.control_plane ]
   name_prefix = "${var.name_prefix}-worker-"
   health_check_type   = "EC2"
   vpc_zone_identifier = [var.subnet_id_main, var.subnet_id_secondary]
@@ -211,31 +276,46 @@ resource "aws_autoscaling_group" "worker_nodes" {
 
 resource "aws_lb_target_group" "main" {
   name     = "main"
-  port     = 80
+  port     = 30080
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
   health_check {
-    port     = 80
+    port     = 30080
     protocol = "HTTP"
   }
 }
 
 resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.main.id
-  port              = 80
+  port              = 443
+  protocol          = "HTTPS"
 
   default_action {
     target_group_arn = aws_lb_target_group.main.id
     type             = "forward"
   }
+
+  certificate_arn = aws_acm_certificate_validation.k8s_subdomain.certificate_arn
+
 }
-resource "aws_autoscaling_attachment" "asg_attachment_bar" {
-  autoscaling_group_name = aws_autoscaling_group.control_plane.id
+resource "aws_autoscaling_attachment" "asg_attachment" {
+  autoscaling_group_name = aws_autoscaling_group.worker_nodes.id
   lb_target_group_arn    = aws_lb_target_group.main.arn
 }
 
+resource "aws_acm_certificate" "k8s_subdomain" {
+  domain_name       = "k8s.${var.domain_name}"
+  validation_method = "DNS"
 
+  tags = {
+    "AppName" = var.domain_name
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
 output "control_plane_launch_template_id" {
   value = aws_launch_template.control_plane.id
