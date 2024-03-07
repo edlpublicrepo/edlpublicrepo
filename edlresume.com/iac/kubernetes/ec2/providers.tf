@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "edlresume.com-state"
-    key    = "ec2/terraform.tfstate"
+    key    = "k8s/ec2/terraform.tfstate"
     region = "us-east-2"
   }
 }
