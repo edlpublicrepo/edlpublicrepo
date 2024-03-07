@@ -1,4 +1,5 @@
 resource "aws_launch_template" "control_plane" {
+  depends_on = [ aws_ssm_parameter.k8s_join_command ]
   name_prefix   = var.name_prefix
   image_id      = var.image_id
   instance_type = var.instance_type
@@ -54,6 +55,12 @@ resource "aws_launch_template" "worker_node" {
   user_data = filebase64(var.path_to_user_data_worker_node)
 }
 
+resource "aws_ssm_parameter" "k8s_join_command" {
+  name  = "k8s-join-command"
+  type  = "SecureString"
+  value = "null"
+}
+
 resource "aws_security_group" "main_sg" {
   name_prefix = var.name_prefix
   #   description = ""
@@ -99,6 +106,14 @@ resource "aws_vpc_security_group_ingress_rule" "allow_https" {
   to_port                      = 443
 }
 
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_30080" {
+  security_group_id = aws_security_group.main_sg.id
+  referenced_security_group_id = aws_security_group.main_sg.id
+  from_port                    = 30080
+  ip_protocol                  = "tcp"
+  to_port                      = 30080
+}
 
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
   security_group_id = aws_security_group.main_sg.id
@@ -158,17 +173,28 @@ resource "aws_lb" "main" {
   }
 }
 
-
-
-
-
-
-
-
-
 data "aws_route53_zone" "main" {
   name         = var.domain_name
   private_zone = false
+}
+
+# resource "aws_route53_record" "k8s" {
+#   zone_id = data.aws_route53_zone.main.zone_id
+#   name    = "k8s.${var.domain_name}"
+#   type    = "A"
+#   alias {
+#     name                   = aws_lb.main.name
+#     zone_id                = data.aws_route53_zone.main.zone_id
+#     evaluate_target_health = true
+#   }
+# }
+
+resource "aws_route53_record" "cname_route53_record" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "k8s.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = "60"
+  records = [aws_lb.main.dns_name]
 }
 
 resource "aws_route53_record" "k8s_subdomain" {
@@ -193,19 +219,6 @@ resource "aws_acm_certificate_validation" "k8s_subdomain" {
   validation_record_fqdns = [for record in aws_route53_record.k8s_subdomain : record.fqdn]
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 resource "aws_key_pair" "main" {
   key_name   = var.name_prefix
   public_key = var.public_key
@@ -228,17 +241,67 @@ data "aws_iam_policy_document" "main" {
   }
 }
 
+# data "aws_iam_policy_document" "parameter_store_access" {
+#   statement {
+#     sid = "AllowParameterStoreAccess"
+#     actions = [
+#       "ssm:GetParameter",
+#       "ssm:PutParameter",
+#       "ssm:DescribeParameters"
+#     ]
+#     resources = [
+#       "*",
+#     ]
+#   }
+# }
+
+# resource "aws_iam_policy" "parameter_store_access" {
+#   name   = "parameter_store_access"
+#   path   = "/"
+#   policy = data.aws_iam_policy_document.parameter_store_access.json
+# }
+
+# resource "aws_iam_role_policy_attachment" "parameter_store_access" {
+#   role       = aws_iam_role.role.name
+#   policy_arn = aws_iam_policy.parameter_store_access.arn
+# }
+
+resource "aws_iam_role_policy" "parameter_store_access" {
+  name = "parameter_store_access"
+  role = aws_iam_role.role.id
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ssm:GetParameter",
+          "ssm:PutParameter",
+          "ssm:DescribeParameters"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 resource "aws_iam_role" "role" {
   name_prefix = var.name_prefix
   path               = "/"
   assume_role_policy = data.aws_iam_policy_document.main.json
-  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonSSMPatchAssociation"]
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", 
+    "arn:aws:iam::aws:policy/AmazonSSMPatchAssociation"
+    ]
 }
 
 resource "aws_autoscaling_group" "control_plane" {
   name_prefix = "${var.name_prefix}-master-"
   health_check_type   = "EC2"
-  vpc_zone_identifier = [var.subnet_id_main, var.subnet_id_secondary]
+  vpc_zone_identifier = [var.subnet_id_main]
   desired_capacity    = 1
   max_size            = 1
   min_size            = 1
@@ -262,7 +325,7 @@ resource "aws_autoscaling_group" "worker_nodes" {
   depends_on = [ aws_autoscaling_group.control_plane ]
   name_prefix = "${var.name_prefix}-worker-"
   health_check_type   = "EC2"
-  vpc_zone_identifier = [var.subnet_id_main, var.subnet_id_secondary]
+  vpc_zone_identifier = [var.subnet_id_main]
   desired_capacity    = var.number_of_worker_nodes
   max_size            = var.number_of_worker_nodes
   min_size            = var.number_of_worker_nodes
@@ -272,7 +335,6 @@ resource "aws_autoscaling_group" "worker_nodes" {
     version = "$Latest"
   }
 }
-
 
 resource "aws_lb_target_group" "main" {
   name     = "main"
