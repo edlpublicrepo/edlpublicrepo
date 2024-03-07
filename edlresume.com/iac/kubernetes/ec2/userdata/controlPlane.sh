@@ -37,6 +37,8 @@ echo "---------------------------------------- Set up the Docker Engine reposito
 sudo apt-get update && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y ca-certificates && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y curl && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
+sudo apt-get install -y awscli && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
+sudo apt-get install -y jq && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y gnupg && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y lsb-release && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y apt-transport-https && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
@@ -125,9 +127,58 @@ echo "========================================= Get the join command (this comma
 echo "---------------------------------------- Install helm"  && \
 sudo snap install helm --classic && \
 echo "========================================= Install helm"  && \
-echo "========================================= DONE! ========================================="
+\
+\
+echo "---------------------------------------- Upload join script to paramater store for the worker nodes to grab and run"  && \
+cat /root/k8s_join.txt | xargs -I {} aws ssm put-parameter --overwrite --name "k8s-join-command" --value '"{}"' --type "SecureString" --description '"Command to join the K8s control plane server"' --region=us-east-2 && \
+echo "========================================= Upload join script to paramater store for the worker nodes to grab and run"  && \
+\
+while [[ `kubectl get nodes | grep worker| grep Ready | wc -l` -ne 1 ]] ; do date ; echo "Waiting for worker node to be in Ready state" ; done && \
+cat <<EOF | sudo tee /root/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edlresume-project
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: edlresume-project
+  template:
+    metadata:
+      labels:
+        app: edlresume-project
+    spec:
+      containers:
+        - name: edlresume
+          image: erickdalima/k8s.edlresume.com:v1
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: edlresume-project
+  name: edlresume-project
+spec:
+  type: NodePort
+  selector:
+    app: edlresume-project
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
 
-##################################################################################################################################
-########################## In Developtment, to run on Worker node to joine the cluster via SSH command##########################
-##################################################################################################################################
-# aws ec2 describe-instances   --filters "Name=tag:Name,Values=Worker" "Name=instance-state-name,Values=running"   --query "Reservations[*].Instances[*].PublicIpAddress"   --region=us-east-2 --output=text | xargs -I {} ssh ubuntu@{} 'cat /home/ubuntu/.ssh/authorized_keys'
+EOF
+if [[ $? == 0 ]]; then echo "'deployment.yaml' heredoc success" ; fi  && \
+\
+kubectl apply -f  /root/deployment.yaml && \
+echo "========================================= DONE! ========================================="

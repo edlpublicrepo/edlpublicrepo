@@ -37,6 +37,8 @@ echo "---------------------------------------- Set up the Docker Engine reposito
 sudo apt-get update && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y ca-certificates && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y curl && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
+sudo apt-get install -y awscli && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
+sudo apt-get install -y jq && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y gnupg && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y lsb-release && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
 sudo apt-get install -y apt-transport-https && sleep 3 && while [[ `ps aux | egrep 'apt|dpkg' | wc -l` -ne 1 ]] ; do date ; done && \
@@ -94,36 +96,16 @@ sudo apt-get update && \
 sudo apt-get install -y kubelet kubeadm kubectl && \
 sudo apt-mark hold kubelet kubeadm kubectl  && \
 echo "alias k='kubectl'" >> ~/.bashrc && \
-echo "========================================= On all nodes, install kubeadm, kubelet, and kubectl" \
+echo "========================================= On all nodes, install kubeadm, kubelet, and kubectl" && \
 \
 \
-# echo "---------------------------------------- On the control plane node only, initialize the cluster and set up kubectl access"  && \
-# sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --kubernetes-version 1.29.1 && \
-# mkdir -p $HOME/.kube && \
-# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && \
-# sudo chown $(id -u):$(id -g) $HOME/.kube/config && \
-# export KUBECONFIG=/etc/kubernetes/admin.conf && \
-# echo "export KUBECONFIG=/etc/kubernetes/admin.conf" >> ~/.bashrc && \
-# echo "========================================= On the control plane node only, initialize the cluster and set up kubectl access"  && \
-# \
-# \
-# echo "---------------------------------------- Verify the cluster is working"  && \
-# kubectl get nodes && \
-# echo "========================================= Verify the cluster is working"  && \
-# \
-# \
-# echo "---------------------------------------- Install the Calico network add-on"  && \
-# kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml && \
-# echo "========================================= Install the Calico network add-on"  && \
-# \
-# \
-# echo "---------------------------------------- Get the join command (this command is also printed during kubeadm init . Feel free to simply copy it from there)"  && \
-# kubeadm token create --print-join-command > ~/k8s_join.txt && \
-# echo "========================================= Get the join command (this command is also printed during kubeadm init . Feel free to simply copy it from there)"  && \
-# \
-# \
-# echo "---------------------------------------- Install helm"  && \
-# sudo snap install helm --classic && \
-# echo "========================================= Install helm"  && \
-# echo "========================================= DONE! ========================================="
+\
+echo "---------------------------------------- Join the Kubernetes cluster"  && \
+while [[ `aws ssm get-parameter --name "k8s-join-command" --with-decryption --region=us-east-2 | jq '.["Parameter"]["Value"]' | grep "null" | wc -l` -eq 1 ]] ; do date ; echo "Waiting for join command to be uploaded to SSM Parameter Store by control plane server" ; done && \
+echo "/bin/bash" > /root/k8s_join.sh && \
+aws ssm get-parameter --name "k8s-join-command" --with-decryption --region=us-east-2 | jq '.["Parameter"]["Value"]' | sed -e 's/\"//g' > /root/k8s_join.sh && \
+chmod +x /root/k8s_join.sh && \
+/root/k8s_join.sh  && \
+echo "========================================= Join the Kubernetes cluster" && \
+echo "========================================= DONE! ========================================="
 
