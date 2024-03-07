@@ -4,7 +4,7 @@ name: Sync files to S3
 on:
   push:
     paths:
-      - ./edlresume.com/iac/toSyncToS3/**
+      - edlresume.com/iac/toSyncToS3/**
 env:
   AWS_REGION : "us-east-2"
 permissions:
