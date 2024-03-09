@@ -1,5 +1,5 @@
 module "website_traffic_api" {
-  source = "../modules"
+  source = "../../modules/apigateway/"
   function_name = data.terraform_remote_state.lambda.outputs.website_traffic_lambda_function_name
   lambda_arn = data.terraform_remote_state.lambda.outputs.website_traffic_lambda_arn
   lambda_invoke_arn = data.terraform_remote_state.lambda.outputs.website_traffic_lambda_invoke_arn
