@@ -19,7 +19,7 @@ jobs:
       - name: Check if PR is from staging to main
         run: |
           if [[ "${{ github.event.pull_request.base.ref }}" == "main" && "${{ github.event.pull_request.head.ref }}" != "staging" ]]; then
-            echo "This PR is not from staging to main. Cancelling merge."
+            echo "This PR is not from staging to main. Cancelling merge. You are trying to merge to ${{ github.event.pull_request.base.ref }} and you are coming from ${{ github.event.pull_request.head.ref }}"
             exit 1
           fi
       - name: Git clone the repository
