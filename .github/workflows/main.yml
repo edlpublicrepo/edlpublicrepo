@@ -26,8 +26,8 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::246363045090:role/DELETE-THIS-ROLE-ASAP_svc-gh-oidc-role
-          role-session-name: samplerolesession
+          role-to-assume: arn:aws:iam::246363045090:role/svc-gh-s3Uploader
+          role-session-name: svc-gh-s3Uploader-session
           aws-region: ${{ env.AWS_REGION }}
       # Upload a file to AWS s3
       - name:  Sync all files with s3
