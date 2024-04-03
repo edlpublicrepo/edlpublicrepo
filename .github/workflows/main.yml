@@ -16,12 +16,11 @@ jobs:
   S3PackageUpload:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if PR is from staging to main
+      - name: Check branch
+        if: github.base_ref == 'main' && github.head_ref != 'staging'
         run: |
-          if [[ "${{ github.event.pull_request.base.ref }}" == "main" && "${{ github.event.pull_request.head.ref }}" != "staging" ]]; then
-            echo "This PR is not from staging to main. Cancelling merge."
-            exit 1
-          fi
+          echo "ERROR: You can only merge to main from staging."
+          exit 1
       - name: Git clone the repository
         uses: actions/checkout@v4
       - name: configure aws credentials
