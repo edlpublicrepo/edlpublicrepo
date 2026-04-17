@@ -77,10 +77,22 @@ export const CHRISTIAN_JOURNALS: ChristianSource[] = [
   { id: "S1034790855", name: "Journal of Theological Interpretation" },
 ];
 
-export function getInstitutionFilter(): string {
-  return CHRISTIAN_INSTITUTIONS.map((i) => i.id).join("|");
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
 }
 
-export function getSourceFilter(): string {
-  return CHRISTIAN_JOURNALS.map((s) => s.id).join("|");
+export function getInstitutionFilterChunks(): string[] {
+  return chunkArray(CHRISTIAN_INSTITUTIONS, 10).map((chunk) =>
+    chunk.map((i) => i.id).join("|"),
+  );
+}
+
+export function getSourceFilterChunks(): string[] {
+  return chunkArray(CHRISTIAN_JOURNALS, 10).map((chunk) =>
+    chunk.map((s) => s.id).join("|"),
+  );
 }

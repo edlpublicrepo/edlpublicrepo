@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { OpenAlexWork, OpenAlexResponse, OpenAlexKeyword } from "@/lib/openalex";
-import { getInstitutionFilter, getSourceFilter } from "@/lib/institutions";
+import { getInstitutionFilterChunks, getSourceFilterChunks } from "@/lib/institutions";
 
 function stripPrefix(id: string): string {
   return id.replace("https://openalex.org/", "");
@@ -95,20 +95,23 @@ export function useKeywordRelatedWorks(
       url.searchParams.append("sort", "cited_by_count:desc");
 
       if (christianOnly) {
-        const instUrl = new URL(url.toString());
-        instUrl.searchParams.append("filter", `authorships.institutions.id:${getInstitutionFilter()}`);
-        const srcUrl = new URL(url.toString());
-        srcUrl.searchParams.append("filter", `primary_location.source.id:${getSourceFilter()}`);
+        const fetches: Promise<any>[] = [];
+        for (const chunk of getInstitutionFilterChunks()) {
+          const u = new URL(url.toString());
+          u.searchParams.append("filter", `authorships.institutions.id:${chunk}`);
+          fetches.push(fetch(u.toString()).then((r) => r.ok ? r.json() : null));
+        }
+        for (const chunk of getSourceFilterChunks()) {
+          const u = new URL(url.toString());
+          u.searchParams.append("filter", `primary_location.source.id:${chunk}`);
+          fetches.push(fetch(u.toString()).then((r) => r.ok ? r.json() : null));
+        }
 
-        const [instRes, srcRes] = await Promise.all([
-          fetch(instUrl.toString()).then((r) => r.ok ? r.json() : null),
-          fetch(srcUrl.toString()).then((r) => r.ok ? r.json() : null),
-        ]);
-
+        const responses = await Promise.all(fetches);
         const seen = new Set<string>();
         if (excludeWorkId) seen.add(`https://openalex.org/${excludeWorkId}`);
         const merged: OpenAlexWork[] = [];
-        for (const d of [instRes, srcRes]) {
+        for (const d of responses) {
           if (!d?.results) continue;
           for (const w of d.results) {
             if (!seen.has(w.id)) { seen.add(w.id); merged.push(w); }

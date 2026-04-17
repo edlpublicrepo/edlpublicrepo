@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useOpenAlexSearch, useSourceSearch, SearchParams } from "@/hooks/use-openalex";
+import { useCrossrefSearch } from "@/hooks/use-crossref";
 import { OpenAlexSource, OpenAlexWork } from "@/lib/openalex";
 import { getHistory, addToHistory, clearHistory } from "@/lib/search-history";
 import { useBookmarks } from "@/hooks/use-bookmarks";
@@ -11,8 +12,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { BookOpen, Search, BookMarked, AlertCircle, Frown, Bookmark, History, X, Church, User, Building2, BookText } from "lucide-react";
+import { BookOpen, Search, BookMarked, AlertCircle, Frown, Bookmark, History, X, Church, User, Building2, BookText, Database } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 
@@ -107,7 +109,14 @@ export default function Home() {
     christianInstitutions: false,
   });
 
+  const [searchSource, setSearchSource] = useState<"openalex" | "crossref">("openalex");
+  const [crossrefPage, setCrossrefPage] = useState(1);
+
   const { data, isLoading, error, isError } = useOpenAlexSearch(params);
+  const { data: crossrefData, isLoading: crossrefLoading } = useCrossrefSearch(
+    { query: params.query, page: crossrefPage, sortBy: params.sortBy },
+    searchSource === "crossref" && !!params.query,
+  );
   const { data: sources } = useSourceSearch(sourceQuery);
   const { bookmarks } = useBookmarks();
 
@@ -172,6 +181,7 @@ export default function Home() {
           <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
             <BookMarked className="w-6 h-6" />
             <span className="font-serif font-bold text-xl tracking-tight">ScholarSearch</span>
+            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">v{__APP_VERSION__}</span>
           </Link>
           <Link href="/bookmarks" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
             <Bookmark className="w-4 h-4" />
@@ -413,115 +423,145 @@ export default function Home() {
               </Alert>
             )}
 
-            {data && data.results.length === 0 && !isLoading && params.query && (
-              <div className="py-16 text-center space-y-4 bg-card rounded-xl border border-border/40">
-                <Frown className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-serif font-semibold text-foreground">No papers found</h3>
-                <p className="text-muted-foreground">Try adjusting your keywords or clearing the filters.</p>
-              </div>
-            )}
+            {/* Source tabs + results */}
+            {params.query && !isLoading && data ? (
+              <Tabs value={searchSource} onValueChange={(v) => { setSearchSource(v as typeof searchSource); setCrossrefPage(1); }}>
+                <TabsList>
+                  <TabsTrigger value="openalex" className="gap-1.5">
+                    <Database className="w-3.5 h-3.5" /> OpenAlex
+                    {data?.meta.count ? <Badge variant="secondary" className="h-4 px-1 text-[10px] ml-1">{data.meta.count.toLocaleString()}</Badge> : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="crossref" className="gap-1.5">
+                    <Database className="w-3.5 h-3.5" /> Crossref
+                    {crossrefData?.count ? <Badge variant="secondary" className="h-4 px-1 text-[10px] ml-1">{crossrefData.count.toLocaleString()}</Badge> : null}
+                  </TabsTrigger>
+                </TabsList>
 
-            {data && data.results.length > 0 && !isLoading && (
-              <>
-                <div className="flex items-center justify-between text-sm text-muted-foreground pb-2 border-b border-border/40">
-                  <span>Found {data.meta.count.toLocaleString()} results</span>
-                  <span>Page {data.meta.page} of {Math.min(totalPages, 400)}</span>
-                </div>
-
-                {/* Faceted filters */}
-                {facets && !params.authorId && !params.institutionId && (
-                  <div className="p-4 bg-muted/30 rounded-lg border border-border/40 space-y-3">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Filter results by</span>
-                    {facets.authors.length > 1 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                          <User className="w-3 h-3" /> Authors
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {facets.authors.map((a) => (
-                            <button
-                              key={a.id}
-                              onClick={() => setParams((p) => ({ ...p, authorId: a.id, page: 1 }))}
-                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
-                            >
-                              {a.name} <span className="text-muted-foreground">({a.count})</span>
-                            </button>
-                          ))}
-                        </div>
+                <TabsContent value="openalex" className="mt-4">
+                  {data && data.results.length > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground pb-2 border-b border-border/40">
+                        <span>Found {data.meta.count.toLocaleString()} results</span>
+                        <span>Page {data.meta.page} of {Math.min(totalPages, 400)}</span>
                       </div>
-                    )}
-                    {facets.institutions.length > 1 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                          <Building2 className="w-3 h-3" /> Institutions
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {facets.institutions.map((i) => (
-                            <button
-                              key={i.id}
-                              onClick={() => setParams((p) => ({ ...p, institutionId: i.id, page: 1 }))}
-                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
-                            >
-                              {i.name} <span className="text-muted-foreground">({i.count})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {facets.sources.length > 1 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                          <BookText className="w-3 h-3" /> Sources
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {facets.sources.map((s) => (
-                            <button
-                              key={s.id}
-                              onClick={() => {
-                                setSelectedSource({ id: s.id, display_name: s.name, works_count: 0 });
-                                setSourceQuery(s.name);
-                                setParams((p) => ({ ...p, sourceId: s.id, page: 1 }));
-                              }}
-                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
-                            >
-                              {s.name} <span className="text-muted-foreground">({s.count})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                <div className="space-y-4 pt-4">
-                  {data.results.map((work) => (
-                    <WorkCard key={work.id} work={work} />
-                  ))}
-                </div>
+                      {facets && !params.authorId && !params.institutionId && (
+                        <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/40 space-y-3">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Filter results by</span>
+                          {facets.authors.length > 1 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                <User className="w-3 h-3" /> Authors
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {facets.authors.map((a) => (
+                                  <button key={a.id} onClick={() => setParams((p) => ({ ...p, authorId: a.id, page: 1 }))} className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors">
+                                    {a.name} <span className="text-muted-foreground">({a.count})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {facets.institutions.length > 1 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                <Building2 className="w-3 h-3" /> Institutions
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {facets.institutions.map((i) => (
+                                  <button key={i.id} onClick={() => setParams((p) => ({ ...p, institutionId: i.id, page: 1 }))} className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors">
+                                    {i.name} <span className="text-muted-foreground">({i.count})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {facets.sources.length > 1 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                <BookText className="w-3 h-3" /> Sources
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {facets.sources.map((s) => (
+                                  <button key={s.id} onClick={() => { setSelectedSource({ id: s.id, display_name: s.name, works_count: 0 }); setSourceQuery(s.name); setParams((p) => ({ ...p, sourceId: s.id, page: 1 })); }} className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors">
+                                    {s.name} <span className="text-muted-foreground">({s.count})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                <div className="pt-8 pb-12 flex justify-center">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                          className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                        />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <span className="px-4 py-2 text-sm font-medium">Page {currentPage}</span>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          className={data.results.length < 25 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              </>
-            )}
+                      <div className="space-y-4 pt-4">
+                        {data.results.map((work) => (
+                          <WorkCard key={work.id} work={work} />
+                        ))}
+                      </div>
+
+                      <div className="pt-8 pb-12 flex justify-center">
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious onClick={() => handlePageChange(Math.max(1, currentPage - 1))} className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                            </PaginationItem>
+                            <PaginationItem><span className="px-4 py-2 text-sm font-medium">Page {currentPage}</span></PaginationItem>
+                            <PaginationItem>
+                              <PaginationNext onClick={() => handlePageChange(currentPage + 1)} className={data.results.length < 25 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    </>
+                  )}
+                  {data && data.results.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-8 text-center">No results in OpenAlex. Try the Crossref tab.</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="crossref" className="mt-4">
+                  {crossrefLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                      <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                      Searching Crossref...
+                    </div>
+                  )}
+                  {crossrefData && crossrefData.results.length > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground pb-2 border-b border-border/40">
+                        <span>Found {crossrefData.count.toLocaleString()} results in Crossref</span>
+                        <span>Page {crossrefPage}</span>
+                      </div>
+                      <div className="space-y-4 pt-4">
+                        {crossrefData.results.map((work) => (
+                          <WorkCard key={work.id} work={work} />
+                        ))}
+                      </div>
+                      <div className="pt-8 pb-12 flex justify-center">
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious onClick={() => setCrossrefPage((p) => Math.max(1, p - 1))} className={crossrefPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                            </PaginationItem>
+                            <PaginationItem><span className="px-4 py-2 text-sm font-medium">Page {crossrefPage}</span></PaginationItem>
+                            <PaginationItem>
+                              <PaginationNext onClick={() => setCrossrefPage((p) => p + 1)} className={crossrefData.results.length < 20 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    </>
+                  )}
+                  {crossrefData && crossrefData.results.length === 0 && !crossrefLoading && (
+                    <p className="text-sm text-muted-foreground py-8 text-center">No results found in Crossref for this query.</p>
+                  )}
+                  {!crossrefData && !crossrefLoading && (
+                    <p className="text-sm text-muted-foreground py-8 text-center">Click this tab to search Crossref for additional results.</p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            ) : null}
+
           </div>
         </div>
       </main>

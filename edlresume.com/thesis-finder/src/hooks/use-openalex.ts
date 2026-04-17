@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { OpenAlexResponse, OpenAlexWork, OpenAlexSource } from "@/lib/openalex";
-import { getInstitutionFilter, getSourceFilter } from "@/lib/institutions";
+import { getInstitutionFilterChunks, getSourceFilterChunks } from "@/lib/institutions";
 
 export type SortOption =
   | "relevance"
@@ -58,28 +58,32 @@ export function useOpenAlexSearch(params: SearchParams) {
       if (params.institutionId) filters.push(`authorships.institutions.id:${params.institutionId}`);
       if (params.christianInstitutions) {
         const baseFilters = filters.join(",");
+        const fetches: Promise<any>[] = [];
 
-        const instUrl = new URL(url.toString());
-        const instFilters = baseFilters
-          ? `${baseFilters},authorships.institutions.id:${getInstitutionFilter()}`
-          : `authorships.institutions.id:${getInstitutionFilter()}`;
-        instUrl.searchParams.set("filter", instFilters);
+        for (const chunk of getInstitutionFilterChunks()) {
+          const u = new URL(url.toString());
+          const f = baseFilters
+            ? `${baseFilters},authorships.institutions.id:${chunk}`
+            : `authorships.institutions.id:${chunk}`;
+          u.searchParams.set("filter", f);
+          fetches.push(fetch(u.toString()).then((r) => r.ok ? r.json() : null));
+        }
+        for (const chunk of getSourceFilterChunks()) {
+          const u = new URL(url.toString());
+          const f = baseFilters
+            ? `${baseFilters},primary_location.source.id:${chunk}`
+            : `primary_location.source.id:${chunk}`;
+          u.searchParams.set("filter", f);
+          fetches.push(fetch(u.toString()).then((r) => r.ok ? r.json() : null));
+        }
 
-        const srcUrl = new URL(url.toString());
-        const srcFilters = baseFilters
-          ? `${baseFilters},primary_location.source.id:${getSourceFilter()}`
-          : `primary_location.source.id:${getSourceFilter()}`;
-        srcUrl.searchParams.set("filter", srcFilters);
-
-        const [instRes, srcRes] = await Promise.all([
-          fetch(instUrl.toString()).then((r) => r.ok ? r.json() : null),
-          fetch(srcUrl.toString()).then((r) => r.ok ? r.json() : null),
-        ]);
-
+        const responses = await Promise.all(fetches);
         const seen = new Set<string>();
         const merged: OpenAlexWork[] = [];
-        for (const data of [instRes, srcRes]) {
+        let totalCount = 0;
+        for (const data of responses) {
           if (!data?.results) continue;
+          totalCount += data.meta?.count ?? 0;
           for (const w of data.results) {
             if (!seen.has(w.id)) {
               seen.add(w.id);
@@ -90,10 +94,11 @@ export function useOpenAlexSearch(params: SearchParams) {
 
         merged.sort((a, b) => {
           if (params.sortBy === "cited_by_count") return b.cited_by_count - a.cited_by_count;
+          if (params.sortBy === "publication_year_desc") return b.publication_year - a.publication_year;
+          if (params.sortBy === "publication_year_asc") return a.publication_year - b.publication_year;
           return 0;
         });
 
-        const totalCount = (instRes?.meta?.count ?? 0) + (srcRes?.meta?.count ?? 0);
         return {
           meta: { count: totalCount, db_response_time_ms: 0, page: params.page || 1, per_page: 25 },
           results: merged.slice(0, 25),

@@ -15,6 +15,7 @@ export default function Bookmarks() {
           <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
             <BookMarked className="w-6 h-6" />
             <span className="font-serif font-bold text-xl tracking-tight">ScholarSearch</span>
+            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">v{__APP_VERSION__}</span>
           </Link>
           <Link href="/bookmarks" className="flex items-center gap-2 text-sm text-primary font-medium">
             <Bookmark className="w-4 h-4" />
