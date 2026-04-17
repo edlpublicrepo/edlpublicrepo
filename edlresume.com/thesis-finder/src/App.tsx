@@ -13,6 +13,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/index.html" component={Home} />
       <Route path="/paper/:id" component={PaperDetail} />
       <Route path="/bookmarks" component={Bookmarks} />
       <Route component={NotFound} />
