@@ -32,19 +32,13 @@ export const CHRISTIAN_INSTITUTIONS: Institution[] = [
   { id: "I56691919", name: "Christian Theological Seminary", tradition: "evangelical" },
   { id: "I71645499", name: "Luther Seminary", tradition: "evangelical" },
 
-  // Catholic / Anglican / Ecumenical
+  // Catholic / Christian universities
   { id: "I191159885", name: "Ave Maria University", tradition: "catholic" },
   { id: "I200450580", name: "Christendom College", tradition: "catholic" },
   { id: "I109358023", name: "Franciscan University of Steubenville", tradition: "catholic" },
   { id: "I84470341", name: "Catholic University of America", tradition: "catholic" },
   { id: "I2799580044", name: "Thomas Aquinas College", tradition: "catholic" },
-  { id: "I40120149", name: "University of Oxford", tradition: "catholic" },
-  { id: "I241749", name: "University of Cambridge", tradition: "catholic" },
-  { id: "I16835326", name: "University of St Andrews", tradition: "catholic" },
-  { id: "I190082696", name: "Durham University", tradition: "catholic" },
-  { id: "I195460627", name: "University of Aberdeen", tradition: "catholic" },
   { id: "I107639228", name: "University of Notre Dame", tradition: "catholic" },
-  { id: "I136199984", name: "Harvard University", tradition: "catholic" },
 ];
 
 export const CHRISTIAN_JOURNALS: ChristianSource[] = [
@@ -70,6 +64,17 @@ export const CHRISTIAN_JOURNALS: ChristianSource[] = [
   { id: "S57189099", name: "First Things" },
   { id: "S185278035", name: "Modern Theology" },
   { id: "S70396470", name: "Neue Zeitschrift für Systematische Theologie" },
+  { id: "S2764983626", name: "Anglican Theological Review" },
+  { id: "S105403553", name: "Ecclesiology" },
+
+  // Major academic theology journals (Oxford, Cambridge, Harvard, etc.)
+  { id: "S149275985", name: "Journal of Theological Studies" },
+  { id: "S111681200", name: "New Testament Studies" },
+  { id: "S43703656", name: "Theology Today" },
+  { id: "S117099692", name: "Harvard Theological Review" },
+  { id: "S23261908", name: "Studies in Christian Ethics" },
+  { id: "S126848956", name: "International Journal of Systematic Theology" },
+  { id: "S1034790855", name: "Journal of Theological Interpretation" },
 ];
 
 export function getInstitutionFilter(): string {

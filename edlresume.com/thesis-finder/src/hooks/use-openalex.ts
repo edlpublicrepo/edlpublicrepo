@@ -2,15 +2,24 @@ import { useQuery } from "@tanstack/react-query";
 import { OpenAlexResponse, OpenAlexWork, OpenAlexSource } from "@/lib/openalex";
 import { getInstitutionFilter, getSourceFilter } from "@/lib/institutions";
 
+export type SortOption =
+  | "relevance"
+  | "cited_by_count"
+  | "publication_year_desc"
+  | "publication_year_asc"
+  | "publication_date_desc";
+
 export interface SearchParams {
   query: string;
   page?: number;
   yearFrom?: string;
   yearTo?: string;
-  sortBy?: "relevance" | "cited_by_count";
+  sortBy?: SortOption;
   isOpenAccess?: boolean;
   documentType?: string;
   sourceId?: string;
+  authorId?: string;
+  institutionId?: string;
   christianInstitutions?: boolean;
 }
 
@@ -30,9 +39,14 @@ export function useOpenAlexSearch(params: SearchParams) {
       url.searchParams.append("per_page", "25");
       url.searchParams.append("page", (params.page || 1).toString());
 
-      if (params.sortBy === "cited_by_count") {
-        url.searchParams.append("sort", "cited_by_count:desc");
-      }
+      const sortMap: Record<string, string> = {
+        cited_by_count: "cited_by_count:desc",
+        publication_year_desc: "publication_year:desc",
+        publication_year_asc: "publication_year:asc",
+        publication_date_desc: "publication_date:desc",
+      };
+      const sortParam = sortMap[params.sortBy ?? ""];
+      if (sortParam) url.searchParams.append("sort", sortParam);
 
       const filters: string[] = [];
       if (params.yearFrom) filters.push(`publication_year:>=${params.yearFrom}`);
@@ -40,6 +54,8 @@ export function useOpenAlexSearch(params: SearchParams) {
       if (params.isOpenAccess) filters.push("open_access.is_oa:true");
       if (params.documentType) filters.push(`type:${params.documentType}`);
       if (params.sourceId) filters.push(`primary_location.source.id:${params.sourceId}`);
+      if (params.authorId) filters.push(`authorships.author.id:${params.authorId}`);
+      if (params.institutionId) filters.push(`authorships.institutions.id:${params.institutionId}`);
       if (params.christianInstitutions) {
         const baseFilters = filters.join(",");
 

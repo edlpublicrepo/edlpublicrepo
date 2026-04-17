@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useOpenAlexSearch, useSourceSearch, SearchParams } from "@/hooks/use-openalex";
-import { OpenAlexSource } from "@/lib/openalex";
+import { OpenAlexSource, OpenAlexWork } from "@/lib/openalex";
 import { getHistory, addToHistory, clearHistory } from "@/lib/search-history";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import { WorkCard } from "@/components/work-card";
@@ -11,8 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { BookOpen, Search, BookMarked, AlertCircle, Frown, Bookmark, History, X, Church } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { BookOpen, Search, BookMarked, AlertCircle, Frown, Bookmark, History, X, Church, User, Building2, BookText } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 
@@ -25,6 +25,67 @@ const DOCUMENT_TYPES = [
   { value: "book", label: "Book" },
   { value: "dataset", label: "Dataset" },
 ];
+
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
+  { value: "cited_by_count", label: "Most Cited" },
+  { value: "publication_year_desc", label: "Newest First" },
+  { value: "publication_year_asc", label: "Oldest First" },
+  { value: "publication_date_desc", label: "Recently Published" },
+];
+
+interface Facet {
+  id: string;
+  name: string;
+  count: number;
+}
+
+function extractFacets(results: OpenAlexWork[]) {
+  const authorMap = new Map<string, { name: string; count: number }>();
+  const sourceMap = new Map<string, { name: string; count: number }>();
+  const institutionMap = new Map<string, { name: string; count: number }>();
+
+  for (const w of results) {
+    for (const a of w.authorships) {
+      if (a.author.id && a.author.display_name) {
+        const existing = authorMap.get(a.author.id);
+        authorMap.set(a.author.id, {
+          name: a.author.display_name,
+          count: (existing?.count ?? 0) + 1,
+        });
+      }
+      for (const inst of a.institutions ?? []) {
+        if (inst.id && inst.display_name) {
+          const existing = institutionMap.get(inst.id);
+          institutionMap.set(inst.id, {
+            name: inst.display_name,
+            count: (existing?.count ?? 0) + 1,
+          });
+        }
+      }
+    }
+    const src = w.primary_location?.source;
+    if (src?.id && src?.display_name) {
+      const existing = sourceMap.get(src.id);
+      sourceMap.set(src.id, {
+        name: src.display_name,
+        count: (existing?.count ?? 0) + 1,
+      });
+    }
+  }
+
+  const toSorted = (map: Map<string, { name: string; count: number }>): Facet[] =>
+    Array.from(map.entries())
+      .map(([id, { name, count }]) => ({ id, name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+  return {
+    authors: toSorted(authorMap),
+    sources: toSorted(sourceMap),
+    institutions: toSorted(institutionMap),
+  };
+}
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState("");
@@ -41,6 +102,8 @@ export default function Home() {
     isOpenAccess: false,
     documentType: "",
     sourceId: "",
+    authorId: "",
+    institutionId: "",
     christianInstitutions: false,
   });
 
@@ -48,12 +111,33 @@ export default function Home() {
   const { data: sources } = useSourceSearch(sourceQuery);
   const { bookmarks } = useBookmarks();
 
+  const facets = useMemo(
+    () => (data?.results ? extractFacets(data.results) : null),
+    [data?.results],
+  );
+
+  const activeFilters: { label: string; clear: () => void }[] = [];
+  if (params.authorId && facets) {
+    const author = facets.authors.find((a) => a.id === params.authorId);
+    activeFilters.push({
+      label: `Author: ${author?.name ?? "Selected"}`,
+      clear: () => setParams((p) => ({ ...p, authorId: "", page: 1 })),
+    });
+  }
+  if (params.institutionId && facets) {
+    const inst = facets.institutions.find((i) => i.id === params.institutionId);
+    activeFilters.push({
+      label: `Institution: ${inst?.name ?? "Selected"}`,
+      clear: () => setParams((p) => ({ ...p, institutionId: "", page: 1 })),
+    });
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
       addToHistory(searchInput.trim());
       setHistory(getHistory());
-      setParams((p) => ({ ...p, query: searchInput.trim(), page: 1 }));
+      setParams((p) => ({ ...p, query: searchInput.trim(), page: 1, authorId: "", institutionId: "" }));
     }
   };
 
@@ -61,7 +145,7 @@ export default function Home() {
     setSearchInput(query);
     addToHistory(query);
     setHistory(getHistory());
-    setParams((p) => ({ ...p, query, page: 1 }));
+    setParams((p) => ({ ...p, query, page: 1, authorId: "", institutionId: "" }));
   };
 
   const handleClearHistory = () => {
@@ -130,10 +214,11 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">Sort by</span>
                   <Select value={params.sortBy} onValueChange={handleSortChange}>
-                    <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="relevance">Relevance</SelectItem>
-                      <SelectItem value="cited_by_count">Most Cited</SelectItem>
+                      {SORT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -177,7 +262,7 @@ export default function Home() {
                   <span className="text-sm font-medium text-muted-foreground">Type</span>
                   <Select
                     value={params.documentType || ""}
-                    onValueChange={(val) => setParams((p) => ({ ...p, documentType: val, page: 1 }))}
+                    onValueChange={(val) => setParams((p) => ({ ...p, documentType: val === "all" ? "" : val, page: 1 }))}
                   >
                     <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="All Types" /></SelectTrigger>
                     <SelectContent>
@@ -242,6 +327,25 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Active facet filters */}
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Filtered by:</span>
+              {activeFilters.map((f) => (
+                <Badge key={f.label} variant="secondary" className="gap-1 pr-1">
+                  {f.label}
+                  <button onClick={f.clear} className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+                </Badge>
+              ))}
+              <button
+                onClick={() => setParams((p) => ({ ...p, authorId: "", institutionId: "", page: 1 }))}
+                className="text-xs text-muted-foreground hover:text-destructive"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
 
           {/* Search history chips */}
           {!params.query && !isLoading && history.length > 0 && (
@@ -323,6 +427,71 @@ export default function Home() {
                   <span>Found {data.meta.count.toLocaleString()} results</span>
                   <span>Page {data.meta.page} of {Math.min(totalPages, 400)}</span>
                 </div>
+
+                {/* Faceted filters */}
+                {facets && !params.authorId && !params.institutionId && (
+                  <div className="p-4 bg-muted/30 rounded-lg border border-border/40 space-y-3">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Filter results by</span>
+                    {facets.authors.length > 1 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                          <User className="w-3 h-3" /> Authors
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {facets.authors.map((a) => (
+                            <button
+                              key={a.id}
+                              onClick={() => setParams((p) => ({ ...p, authorId: a.id, page: 1 }))}
+                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                            >
+                              {a.name} <span className="text-muted-foreground">({a.count})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {facets.institutions.length > 1 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                          <Building2 className="w-3 h-3" /> Institutions
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {facets.institutions.map((i) => (
+                            <button
+                              key={i.id}
+                              onClick={() => setParams((p) => ({ ...p, institutionId: i.id, page: 1 }))}
+                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                            >
+                              {i.name} <span className="text-muted-foreground">({i.count})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {facets.sources.length > 1 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                          <BookText className="w-3 h-3" /> Sources
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {facets.sources.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => {
+                                setSelectedSource({ id: s.id, display_name: s.name, works_count: 0 });
+                                setSourceQuery(s.name);
+                                setParams((p) => ({ ...p, sourceId: s.id, page: 1 }));
+                              }}
+                              className="px-2 py-0.5 text-xs rounded-full bg-background border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                            >
+                              {s.name} <span className="text-muted-foreground">({s.count})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-4 pt-4">
                   {data.results.map((work) => (
