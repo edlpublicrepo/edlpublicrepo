@@ -142,6 +142,7 @@
         function unlock() {
           document.getElementById('auth-gate').remove();
           document.getElementById('app-content').style.display = 'block';
+          history.replaceState(null, '', '/');
           var s = document.createElement('script');
           s.type = 'module';
           s.crossOrigin = '';
