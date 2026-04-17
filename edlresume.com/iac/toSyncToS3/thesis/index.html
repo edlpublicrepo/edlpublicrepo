@@ -142,15 +142,6 @@
         function unlock() {
           document.getElementById('auth-gate').remove();
           document.getElementById('app-content').style.display = 'block';
-          Object.defineProperty(window, 'location', {
-            value: new Proxy(window.location, {
-              get: function(target, prop) {
-                if (prop === 'pathname') return '/';
-                var v = target[prop];
-                return typeof v === 'function' ? v.bind(target) : v;
-              }
-            })
-          });
           var s = document.createElement('script');
           s.type = 'module';
           s.crossOrigin = '';
