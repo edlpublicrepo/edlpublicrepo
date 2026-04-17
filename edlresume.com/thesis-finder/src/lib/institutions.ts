@@ -4,6 +4,11 @@ export interface Institution {
   tradition: "reformed" | "evangelical" | "catholic";
 }
 
+export interface ChristianSource {
+  id: string;
+  name: string;
+}
+
 export const CHRISTIAN_INSTITUTIONS: Institution[] = [
   // Reformed / Presbyterian
   { id: "I177154391", name: "Westminster Theological Seminary", tradition: "reformed" },
@@ -42,6 +47,35 @@ export const CHRISTIAN_INSTITUTIONS: Institution[] = [
   { id: "I136199984", name: "Harvard University", tradition: "catholic" },
 ];
 
+export const CHRISTIAN_JOURNALS: ChristianSource[] = [
+  // Reformed / Presbyterian journals
+  { id: "S172707683", name: "Westminster Theological Journal" },
+  { id: "S1025265836", name: "Calvin Theological Journal" },
+  { id: "S4393918999", name: "Reformed Theological Review" },
+  { id: "S81350151", name: "Journal of Reformed Theology" },
+  { id: "S4210195638", name: "Unio cum Christo" },
+  { id: "S977514457", name: "Kerux" },
+
+  // Evangelical journals
+  { id: "S2210832", name: "Journal of the Evangelical Theological Society" },
+  { id: "S4256064", name: "Bibliotheca Sacra" },
+  { id: "S9748430", name: "Themelios" },
+  { id: "S98946164", name: "Tyndale Bulletin" },
+  { id: "S4394735752", name: "The Evangelical Quarterly" },
+  { id: "S5407042541", name: "Pneumatikos (Chafer Theological Seminary)" },
+
+  // Catholic / Anglican / Ecumenical journals
+  { id: "S70443789", name: "Scottish Journal of Theology" },
+  { id: "S4210195324", name: "Pro Ecclesia" },
+  { id: "S57189099", name: "First Things" },
+  { id: "S185278035", name: "Modern Theology" },
+  { id: "S70396470", name: "Neue Zeitschrift für Systematische Theologie" },
+];
+
 export function getInstitutionFilter(): string {
   return CHRISTIAN_INSTITUTIONS.map((i) => i.id).join("|");
+}
+
+export function getSourceFilter(): string {
+  return CHRISTIAN_JOURNALS.map((s) => s.id).join("|");
 }

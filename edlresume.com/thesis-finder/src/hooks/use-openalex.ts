@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { OpenAlexResponse, OpenAlexSource } from "@/lib/openalex";
-import { getInstitutionFilter } from "@/lib/institutions";
+import { OpenAlexResponse, OpenAlexWork, OpenAlexSource } from "@/lib/openalex";
+import { getInstitutionFilter, getSourceFilter } from "@/lib/institutions";
 
 export interface SearchParams {
   query: string;
@@ -40,7 +40,49 @@ export function useOpenAlexSearch(params: SearchParams) {
       if (params.isOpenAccess) filters.push("open_access.is_oa:true");
       if (params.documentType) filters.push(`type:${params.documentType}`);
       if (params.sourceId) filters.push(`primary_location.source.id:${params.sourceId}`);
-      if (params.christianInstitutions) filters.push(`authorships.institutions.id:${getInstitutionFilter()}`);
+      if (params.christianInstitutions) {
+        const baseFilters = filters.join(",");
+
+        const instUrl = new URL(url.toString());
+        const instFilters = baseFilters
+          ? `${baseFilters},authorships.institutions.id:${getInstitutionFilter()}`
+          : `authorships.institutions.id:${getInstitutionFilter()}`;
+        instUrl.searchParams.set("filter", instFilters);
+
+        const srcUrl = new URL(url.toString());
+        const srcFilters = baseFilters
+          ? `${baseFilters},primary_location.source.id:${getSourceFilter()}`
+          : `primary_location.source.id:${getSourceFilter()}`;
+        srcUrl.searchParams.set("filter", srcFilters);
+
+        const [instRes, srcRes] = await Promise.all([
+          fetch(instUrl.toString()).then((r) => r.ok ? r.json() : null),
+          fetch(srcUrl.toString()).then((r) => r.ok ? r.json() : null),
+        ]);
+
+        const seen = new Set<string>();
+        const merged: OpenAlexWork[] = [];
+        for (const data of [instRes, srcRes]) {
+          if (!data?.results) continue;
+          for (const w of data.results) {
+            if (!seen.has(w.id)) {
+              seen.add(w.id);
+              merged.push(w);
+            }
+          }
+        }
+
+        merged.sort((a, b) => {
+          if (params.sortBy === "cited_by_count") return b.cited_by_count - a.cited_by_count;
+          return 0;
+        });
+
+        const totalCount = (instRes?.meta?.count ?? 0) + (srcRes?.meta?.count ?? 0);
+        return {
+          meta: { count: totalCount, db_response_time_ms: 0, page: params.page || 1, per_page: 25 },
+          results: merged.slice(0, 25),
+        } as OpenAlexResponse;
+      }
 
       if (filters.length > 0) {
         url.searchParams.append("filter", filters.join(","));
